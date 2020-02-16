@@ -7,22 +7,12 @@ from homeassistant.const import (
 import voluptuous as vol
 import logging
 import sys
-
-ATTR_ID = "Station ID"
-ATTR_GASOIL = 'Gasoil'
-ATTR_E95 = 'E95'
-ATTR_E98 = 'E98'
-ATTR_E10 = 'E10'
-ATTR_GASOIL_LAST_UPDATE = 'Last Update Gasoil'
-ATTR_E95_LAST_UPDATE= 'Last Update E95'
-ATTR_E98_LAST_UPDATE = 'Last Update E98'
-ATTR_E10_LAST_UPDATE = 'Last Update E10'
-ATTR_ADDRESS = "Station Address"
+import .gazpart
 ATTR_NAME = "Station name"
 ATTR_LAST_UPDATE = "Last update"
 
-CONF_MAX_KM = 'maxDistance'
-CONF_STATION_ID = 'stationID'
+CONF_GRDF_LOGIN = 'grdfLogin'
+CONF_GRDF_PASSWORD = 'grdfPassword'
 
 SCAN_INTERVAL = timedelta(seconds=3600)
 
@@ -30,32 +20,26 @@ SCAN_INTERVAL = timedelta(seconds=3600)
 
 # Validation of the user's configuration
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
-    vol.Optional(CONF_MAX_KM, default=10): cv.positive_int,
-    vol.Optional(CONF_LATITUDE): cv.latitude,
-    vol.Optional(CONF_LONGITUDE): cv.longitude,
-    vol.Optional(CONF_STATION_ID, default=[]): cv.ensure_list
+    vol.Optional(CONF_GRDF_LOGIN): cv.string,
+    vol.Optional(CONF_GRDF_PASSWORD): cv.string,
 })
 
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
-    from prixCarburantClient.prixCarburantClient import PrixCarburantClient
     #from .old import PrixCarburantClient
     logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
-    logging.info("[prixCarburantLoad] start")
+    logging.info("[gazpart] start")
     """Setup the sensor platform."""
-    latitude = config.get(CONF_LATITUDE, hass.config.latitude)
-    longitude = config.get(CONF_LONGITUDE, hass.config.longitude)
-    maxDistance = config.get(CONF_MAX_KM)
-    listToExtract = config.get(CONF_STATION_ID)
-
-    homeLocation = [{
-        'lat': str(latitude),
-        'lng': str(longitude)
-    }]
-
-    client = PrixCarburantClient(homeLocation, maxDistance)
-    client.load()
-
+    login = config.get(CONF_GRDF_LOGIN)
+    password = config.get(CONF_GRDF_PASSWORD)
+    # Try to log in Enedis API
+    try:
+       logging.info("logging in GRDF URI %s...", gazpar.API_BASE_URI)
+       token = gazpar.login(login,password)
+       logging.info("logged in successfully!")
+     except:
+        logging.error("unable to login on %s : %s", gazpar.API_BASE_URI, exc)
+                                                            sys.exit(1)
     if not listToExtract:
         logging.info(
             "[prixCarburantLoad] No station list, find nearest station")
