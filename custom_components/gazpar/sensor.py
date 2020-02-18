@@ -37,10 +37,9 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
        logging.info("logging in GRDF URI %s...", gazpar.API_BASE_URI)
        token = gazpar.login(login,password)
        logging.info("logged in successfully!")
-     except:
-        logging.error("unable to login on %s : %s", gazpar.API_BASE_URI, exc)
-    
-     add_devices([Gazpar(token,gazpar)])
+    except:
+       logging.error("unable to login on %s : %s", gazpar.API_BASE_URI, exc)
+    add_devices([Gazpar(token,gazpar)])
 
 
 class Gazpar(Entity):
