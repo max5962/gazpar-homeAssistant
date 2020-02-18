@@ -7,7 +7,7 @@ from homeassistant.const import (
 import voluptuous as vol
 import logging
 import sys
-import .gazpart
+from gazpart import *
 ATTR_NAME = "Station name"
 ATTR_LAST_UPDATE = "Last update"
 
