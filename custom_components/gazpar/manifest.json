@@ -2,7 +2,7 @@
 {
   "domain": "gazpar",
   "name": "gazpar",
-  "documentation": "https://github.com/max5962/prixCarburant-home-assistant/blob/master/README.md",
+  "documentation": "https://github.com/max5962/gazpar-homeAssistant/blob/master/README.md",
   "dependencies": [],
   "codeowners": [],
   "requirements": []
