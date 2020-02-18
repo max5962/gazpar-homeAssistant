@@ -39,43 +39,41 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
        logging.info("logged in successfully!")
      except:
         logging.error("unable to login on %s : %s", gazpar.API_BASE_URI, exc)
-                                                            sys.exit(1)
-    if not listToExtract:
-        logging.info(
-            "[prixCarburantLoad] No station list, find nearest station")
-        stations = client.foundNearestStation()
-    else:
-        logging.info(
-            "[prixCarburantLoad] Station list is defined, extraction in progress")
-        list = []
-        for station in listToExtract:
-            list.append(str(station))
-            logging.info("[prixCarburantLoad] - " + str(station))
-        stations = client.extractSpecificStation(list)
-
-    logging.info("[prixCarburantLoad] " +
-                 str(len(stations)) + " stations found")
-    client.clean()
-    for station in stations:
-        add_devices([PrixCarburant(stations.get(station), client)])
+    
+     add_devices([Gazpar(token,gazpar)])
 
 
-class PrixCarburant(Entity):
+class Gazpar(Entity):
     """Representation of a Sensor."""
 
-    def __init__(self, station, client):
+    def __init__(self, token, gazpar):
         """Initialize the sensor."""
         self._state = None
-        self.station = station
-        self.client = client
-        self._state = self.station.gazoil['valeur']
-        self.lastUpdate=self.client.lastUpdate
+        self.token = token
+        self.gazpar = gazpar
+        self._state = ""
+    
+    def _dayToStr(date):
+        return date.strftime("%d/%m/%Y")
+   
+    # Sub to get StartDate depending today - daysNumber
+    def _getStartDate(today, daysNumber):
+        return _dayToStr(today - relativedelta(days=daysNumber))
 
+    # Get the midnight timestamp for startDate
+    def _getStartTS(daysNumber):
+        date = (datetime.datetime.now().replace(hour=12,minute=0,second=0,microsecond=0) - relativedelta(days=daysNumber))
+        return date.timestamp()
+
+    # Get the timestamp for calculating if we are in HP / HC
+    def _getDateTS(y,mo,d,h,m):
+        date = (datetime.datetime(year=y,month=mo,day=d,hour=h,minute=m,second=0,microsecond=0))
+        return date.timestamp()
 
     @property
     def name(self):
         """Return the name of the sensor."""
-        return 'PrixCarburant_' + self.station.id
+        return 'Gazpar'
 
     @property
     def state(self):
@@ -92,18 +90,7 @@ class PrixCarburant(Entity):
         """Return the device state attributes of the last update."""
 
         attrs = {
-            ATTR_ID: self.station.id,
-            ATTR_GASOIL: self.station.gazoil['valeur'],
-            ATTR_GASOIL_LAST_UPDATE: self.station.gazoil['maj'],
-            ATTR_E95: self.station.e95['valeur'],
-            ATTR_E95_LAST_UPDATE: self.station.e95['maj'],
-            ATTR_E98: self.station.e98['valeur'],
-            ATTR_E98_LAST_UPDATE: self.station.e98['maj'],
-            ATTR_E10: self.station.e10['valeur'],
-            ATTR_E10_LAST_UPDATE: self.station.e10['maj'],
-            ATTR_ADDRESS: self.station.adress,
-            ATTR_NAME: self.station.name,
-            ATTR_LAST_UPDATE: self.client.lastUpdate.strftime('%Y-%m-%d')
+            ATTR_ID: "",
         }
         return attrs
 
@@ -112,17 +99,26 @@ class PrixCarburant(Entity):
 
         This is the only method that should fetch new data for Home Assistant.
         """
+        startDate = _getStartDate(datetime.date.today(), args.days)
+        endDate = _dayToStr(datetime.date.today())
+        resGrdf = gazpar.get_data_per_day(token, startDate, endDate)
 
-        self.client.reloadIfNecessary()
-        if self.client.lastUpdate == self.lastUpdate:
-            logging.debug("[UPDATE]["+self.station.id+"] valeur a jour") 
-        else:
-            logging.debug("[UPDATE]["+self.station.id+"] valeur pas a jour")
-            list = []
-            list.append(str(self.station.id))
-            myStation = self.client.extractSpecificStation(list)
-            self.station = myStation.get(self.station.id)
-            self.lastUpdate=self.client.lastUpdate
+        for d in resGrdf:
+          # Use the formula to create timestamp, 1 ordre = 30min
+          t = datetime.datetime.strptime(d['date'] + " 12:00", '%d-%m-%Y %H:%M')
+          logging.info(("found value : {0:3} kWh / {1:7.2f} m3 at {2}").format(d['kwh'], d['mcube'], t.strftime('%Y-%m-%dT%H:%M:%SZ')))
+        
 
-        self._state = self.station.gazoil['valeur']
-        self.client.clean()
+        #self.client.reloadIfNecessary()
+        #if self.client.lastUpdate == self.lastUpdate:
+        #    logging.debug("[UPDATE]["+self.station.id+"] valeur a jour") 
+        #else:
+        #    logging.debug("[UPDATE]["+self.station.id+"] valeur pas a jour")
+        #    list = []
+        #    list.append(str(self.station.id))
+        #    myStation = self.client.extractSpecificStation(list)
+        #    self.station = myStation.get(self.station.id)
+        #    self.lastUpdate=self.client.lastUpdate
+        #
+        #self._state = self.station.gazoil['valeur']
+        #self.client.clean()
